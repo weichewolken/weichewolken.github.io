@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>schedule</title>
+  <title>ふんわり予定カード</title>
   <style>
     body {
       margin: 0;
@@ -467,64 +467,48 @@
 
     function makeDraggableAndResizable(card, cObj){
       let isDragging = false;
-      let isResizing = false;
       let offsetX, offsetY;
 
-      // タッチイベントとマウスイベントの両方に対応
-      const startEvent = 'ontouchstart' in window ? 'touchstart' : 'mousedown';
-      const moveEvent = 'ontouchstart' in window ? 'touchmove' : 'mousemove';
-      const endEvent = 'ontouchstart' in window ? 'touchend' : 'mouseup';
-
-      card.addEventListener(startEvent, function(e){
-        e.preventDefault();
-        const touch = e.touches ? e.touches[0] : e;
+      card.addEventListener('mousedown', function(e){
+        // リサイズハンドル領域かどうかをチェック
         const rect = card.getBoundingClientRect();
-        const rightEdge = rect.right - 30;
-        const bottomEdge = rect.bottom - 30;
+        const rightEdge = rect.right - 20;
+        const bottomEdge = rect.bottom - 20;
 
-        if (touch.clientX > rightEdge && touch.clientY > bottomEdge) {
-          isResizing = true;
-          return;
+        // 右下角付近でのクリック（リサイズ）を検出 - ブラウザのネイティブリサイズに任せる
+        if (e.clientX > rightEdge && e.clientY > bottomEdge) {
+          return; // ブラウザのリサイズ機能に任せる
         }
 
+        // それ以外はドラッグ
         if(e.target === card){
           isDragging = true;
-          offsetX = touch.clientX - rect.left;
-          offsetY = touch.clientY - rect.top;
+          offsetX = e.clientX - rect.left;
+          offsetY = e.clientY - rect.top;
+          e.preventDefault();
         }
       });
 
-      document.addEventListener(moveEvent, function(e){
-        if (isResizing) {
-          return;
-        }
-        
+      document.addEventListener('mousemove', function(e){
         if (!isDragging) return;
-        e.preventDefault();
-        const touch = e.touches ? e.touches[0] : e;
+        
         const rect = cardContainer.getBoundingClientRect();
-        let x = touch.clientX - rect.left - offsetX;
-        let y = touch.clientY - rect.top - offsetY;
+        let x = e.clientX - rect.left - offsetX;
+        let y = e.clientY - rect.top - offsetY;
         card.style.left = x + 'px';
         card.style.top = y + 'px';
-      }, { passive: false });
+      });
 
-      document.addEventListener(endEvent, function(){
+      document.addEventListener('mouseup', function(){
         if (isDragging) {
           isDragging = false;
           cObj.x = parseFloat(card.style.left);
           cObj.y = parseFloat(card.style.top);
           save();
         }
-        if (isResizing) {
-          isResizing = false;
-          cObj.width = parseFloat(card.style.width);
-          cObj.height = parseFloat(card.style.height);
-          save();
-        }
       });
 
-      // サイズ変更検出
+      // サイズ変更検出（ブラウザのリサイズ後）
       const resizeObserver = new ResizeObserver(entries => {
         for (let entry of entries) {
           cObj.width = entry.contentRect.width;
@@ -533,6 +517,46 @@
         }
       });
       resizeObserver.observe(card);
+
+      // タッチデバイス対応
+      if ('ontouchstart' in window) {
+        let touchStartX, touchStartY, initialX, initialY;
+        
+        card.addEventListener('touchstart', function(e){
+          const touch = e.touches[0];
+          const rect = card.getBoundingClientRect();
+          
+          touchStartX = touch.clientX;
+          touchStartY = touch.clientY;
+          initialX = rect.left;
+          initialY = rect.top;
+          
+          isDragging = true;
+          e.preventDefault();
+        });
+
+        card.addEventListener('touchmove', function(e){
+          if (!isDragging) return;
+          
+          const touch = e.touches[0];
+          const deltaX = touch.clientX - touchStartX;
+          const deltaY = touch.clientY - touchStartY;
+          
+          card.style.left = (initialX + deltaX) + 'px';
+          card.style.top = (initialY + deltaY) + 'px';
+          
+          e.preventDefault();
+        });
+
+        card.addEventListener('touchend', function(){
+          if (isDragging) {
+            isDragging = false;
+            cObj.x = parseFloat(card.style.left);
+            cObj.y = parseFloat(card.style.top);
+            save();
+          }
+        });
+      }
     }
 
     // モーダル関連の関数
