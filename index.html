@@ -513,11 +513,6 @@
     }
   </style>
 
-<!-- Firebase (compat 版: window.firebase で扱えるので、既存コードを module 化しなくてOK) -->
-<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
-
-
 </head>
 <body>
   <!-- ヘッダー -->
@@ -589,86 +584,6 @@
   </div>
 
   <script>
-
-  /* === Firebase 同期コード（先頭に追加）ここから ====================== */
-
-  // あなたの Firebase 設定（そのまま利用OK）
-  const firebaseConfig = {
-    apiKey: "AIzaSyCU_QFJ4vp_RlJSqDo6mKAuutZ2BrxxMsM",
-    authDomain: "schedule-4199e.firebaseapp.com",
-    projectId: "schedule-4199e",
-    storageBucket: "schedule-4199e.firebasestorage.app",
-    messagingSenderId: "478294860295",
-    appId: "1:478294860295:web:3aabaadaf4a46501ac40a2",
-    measurementId: "G-B4K3XB880N"
-  };
-
-  // 初期化
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-
-  // 共有ボードID（URL に ?board=xxxx があればそれを使用。無ければ "shared"）
-  const params = new URLSearchParams(location.search);
-  const BOARD_ID = params.get('board') || 'shared';
-  const boardRef = db.collection('boards').doc(BOARD_ID);
-
-  // 自分の書き込みかどうか判定するための端末ID（ループ防止用）
-  const CLIENT_ID_KEY = 'schedule_client_id';
-  let clientId = localStorage.getItem(CLIENT_ID_KEY);
-  if (!clientId) {
-    clientId = Math.random().toString(36).slice(2);
-    localStorage.setItem(CLIENT_ID_KEY, clientId);
-  }
-
-  // クラウド→画面に反映（他端末の更新も拾う）
-  let suppressNextSnapshot = false; // 直前に自分が書いた更新は無視するためのフラグ
-  function startCloudListener() {
-    boardRef.onSnapshot((snap) => {
-      if (!snap.exists) return;
-      const data = snap.data() || {};
-      if (data.updatedBy === clientId && suppressNextSnapshot) {
-        suppressNextSnapshot = false;
-        return; // 自分が保存した直後の通知はスキップ
-      }
-      if (data.allData) {
-        allData = data.allData;
-        if (!allData[currentDate]) allData[currentDate] = [];
-        renderCards();
-        renderDateList();
-      }
-    }, (err) => {
-      console.error('Firestore onSnapshot error:', err);
-    });
-  }
-
-  // 初回ロード（クラウドにデータが無ければ現在のローカルをアップ）
-  async function loadFromCloudFirst() {
-    try {
-      const doc = await boardRef.get();
-      if (doc.exists) {
-        const data = doc.data() || {};
-        if (data.allData) {
-          allData = data.allData;
-          if (!allData[currentDate]) allData[currentDate] = [];
-          renderCards();
-          renderDateList();
-        }
-      } else {
-        await boardRef.set({
-          allData,
-          updatedBy: clientId,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-      }
-      startCloudListener();
-    } catch (e) {
-      console.error('初回同期に失敗:', e);
-    }
-  }
-
-  /* === Firebase 同期コード（先頭に追加）ここまで ====================== */
-
-
 
     const cardContainer = document.getElementById('card-container');
     const inputForm = document.getElementById('input-form');
@@ -757,27 +672,7 @@
       const dateStr = addDateInput.value;
       if (dateStr && !allData[dateStr]) {
         allData[dateStr] = [];
-        s  // データ保存（ローカル＋Firestoreへ）
-  function saveAllData() {
-    // ① これまで通りローカルへ保存（オフラインでも安心）
-    localStorage.setItem('allScheduleData', JSON.stringify(allData));
-
-    // ② Firestore にも保存（書き込みを少しまとめる）
-    if (window._saveTimer) clearTimeout(window._saveTimer);
-    window._saveTimer = setTimeout(async () => {
-      try {
-        suppressNextSnapshot = true; // この直後に来る自分のスナップショットを無視
-        await boardRef.set({
-          allData,
-          updatedBy: clientId,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-      } catch (e) {
-        console.error('クラウド保存に失敗:', e);
-      }
-    }, 200);
-  }
-
+        saveAllData();
         renderDateList();
         addDateInput.value = '';
       }
@@ -838,7 +733,7 @@
       }
     }
 
-    // データ保存
+    // データ保存（ローカルストレージのみ）
     function saveAllData() {
       localStorage.setItem('allScheduleData', JSON.stringify(allData));
     }
@@ -922,8 +817,16 @@
       card.style.backgroundColor = c.color+'AA';
       card.style.left = c.x + 'px';
       card.style.top = c.y + 'px';
-      card.style.width = c.width + 'px';
-      card.style.height = c.height + 'px';
+      
+      // ここが重要：widthとheightを正確に設定
+      if (c.width && c.height) {
+        card.style.width = c.width + 'px';
+        card.style.height = c.height + 'px';
+      } else {
+        // 古いデータの場合はデフォルト値を使用
+        card.style.width = '200px';
+        card.style.height = '120px';
+      }
 
       card.setAttribute('tabindex', 0);
 
@@ -989,6 +892,7 @@
 
       const resizeObserver = new ResizeObserver(entries => {
         for (let entry of entries) {
+          // サイズを正確に保存
           cObj.width = entry.contentRect.width;
           cObj.height = entry.contentRect.height;
           setCurrentCards(getCurrentCards());
@@ -1063,9 +967,22 @@
       editingIndex = -1;
     }
 
-    // エクスポート・インポート機能
+    // エクスポート・インポート機能（修正版）
     function exportCards() {
-      const dataStr = JSON.stringify(allData, null, 2);
+      // 各カードの現在のサイズと位置を確実に保存
+      const exportData = {};
+      Object.keys(allData).forEach(dateStr => {
+        exportData[dateStr] = allData[dateStr].map(card => ({
+          text: card.text,
+          color: card.color,
+          x: card.x || 20,
+          y: card.y || 20,
+          width: card.width || 200,
+          height: card.height || 120
+        }));
+      });
+
+      const dataStr = JSON.stringify(exportData, null, 2);
       const dataBlob = new Blob([dataStr], {type: 'application/json'});
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement('a');
@@ -1083,13 +1000,35 @@
       reader.onload = function(e) {
         try {
           const importedData = JSON.parse(e.target.result);
+          
+          // データ検証とデフォルト値の設定
+          const validatedData = {};
+          Object.keys(importedData).forEach(dateStr => {
+            validatedData[dateStr] = importedData[dateStr].map(card => ({
+              text: card.text || '',
+              color: card.color || colors[0],
+              x: typeof card.x === 'number' ? card.x : 20,
+              y: typeof card.y === 'number' ? card.y : 20,
+              width: typeof card.width === 'number' ? card.width : 200,
+              height: typeof card.height === 'number' ? card.height : 120
+            }));
+          });
+          
           if (confirm('インポートしたデータで現在のすべての予定を置き換えますか？')) {
-            allData = importedData;
+            allData = validatedData;
+            
+            // 現在の日付がインポートデータに含まれていない場合は空配列で初期化
+            if (!allData[currentDate]) {
+              allData[currentDate] = [];
+            }
+            
             saveAllData();
             renderCards();
             renderDateList();
+            alert('データのインポートが完了しました。');
           }
         } catch (error) {
+          console.error('Import error:', error);
           alert('ファイルの形式が正しくありません。');
         }
       };
@@ -1129,8 +1068,6 @@
     currentDateDisplay.textContent = formatDateForDisplay(currentDate);
     renderCards();
     renderDateList();
-
-  loadFromCloudFirst();
   </script>
 </body>
 </html>
