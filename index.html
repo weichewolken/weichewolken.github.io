@@ -213,6 +213,51 @@
       font-size: 14px;
     }
 
+    /* 色選択セクション */
+    #color-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    #color-toggle {
+      background: #9e9e9e;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    #color-toggle:hover {
+      background: #757575;
+    }
+
+    #color-toggle .arrow {
+      transition: transform 0.3s ease;
+    }
+
+    #color-toggle .arrow.expanded {
+      transform: rotate(180deg);
+    }
+
+    #color-palette {
+      display: none;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 0;
+    }
+
+    #color-palette.show {
+      display: flex;
+    }
+
     .color-option {
       width: 30px;
       height: 30px;
@@ -225,7 +270,7 @@
       outline: 3px solid #000;
     }
 
-    #input-form button {
+    #input-form button[type="submit"] {
       padding: 8px 16px;
       font-size: 14px;
       background: #607d8b;
@@ -233,9 +278,10 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
+      width: 100%;
     }
 
-    #input-form button:hover {
+    #input-form button[type="submit"]:hover {
       background: #455a64;
     }
 
@@ -409,10 +455,14 @@
         height: 25px;
       }
 
-      #input-form button {
+      #color-toggle {
         padding: 10px 16px;
         font-size: 16px;
-        width: 100%;
+      }
+
+      #input-form button[type="submit"] {
+        padding: 10px 16px;
+        font-size: 16px;
       }
 
       .modal-content {
@@ -493,7 +543,14 @@
 
     <form id="input-form">
       <textarea id="card-text" placeholder="予定を入力…" required rows="2"></textarea>
-      <div id="color-palette"></div>
+      
+      <div id="color-section">
+        <button type="button" id="color-toggle">
+          色を選択 <span class="arrow">▼</span>
+        </button>
+        <div id="color-palette"></div>
+      </div>
+      
       <button type="submit">追加</button>
       
       <div class="export-import-section">
@@ -529,6 +586,7 @@
     const inputForm = document.getElementById('input-form');
     const cardText = document.getElementById('card-text');
     const colorPalette = document.getElementById('color-palette');
+    const colorToggle = document.getElementById('color-toggle');
     const editModal = document.getElementById('edit-modal');
     const editText = document.getElementById('edit-text');
     const modalColorPalette = document.getElementById('modal-color-palette');
@@ -546,6 +604,7 @@
     let selectedColor = colors[0];
     let editingIndex = -1;
     let editingColor = colors[0];
+    let colorPaletteVisible = false;
 
     // 日付管理
     let allData = JSON.parse(localStorage.getItem('allScheduleData') || '{}');
@@ -570,6 +629,26 @@
       
       return `${year}年${month}月${day}日（${weekday}）`;
     }
+
+    // 色選択の表示/非表示切り替え
+    function toggleColorPalette() {
+      colorPaletteVisible = !colorPaletteVisible;
+      const arrow = colorToggle.querySelector('.arrow');
+      
+      if (colorPaletteVisible) {
+        colorPalette.classList.add('show');
+        arrow.classList.add('expanded');
+        colorToggle.textContent = '色を選択 ';
+        colorToggle.appendChild(arrow);
+      } else {
+        colorPalette.classList.remove('show');
+        arrow.classList.remove('expanded');
+        colorToggle.textContent = '色を選択 ';
+        colorToggle.appendChild(arrow);
+      }
+    }
+
+    colorToggle.addEventListener('click', toggleColorPalette);
 
     // サイドバー制御
     function toggleSidebar() {
@@ -939,9 +1018,3 @@
     });
 
     // 初期化
-    currentDateDisplay.textContent = formatDateForDisplay(currentDate);
-    renderCards();
-    renderDateList();
-  </script>
-</body>
-</html>
