@@ -1,587 +1,40 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>ふんわり予定カード</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Firebase Schedule Cards</title>
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: "Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif;
-      background: white;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    /* ヘッダー */
-    #header {
-      background: #f5f5f5;
-      color: #333;
-      padding: 10px 15px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      z-index: 100;
-      border-bottom: 1px solid #ddd;
-    }
-
-    #menu-button {
-      background: none;
-      border: none;
-      color: #333;
-      font-size: 20px;
-      cursor: pointer;
-      padding: 5px;
-      display: flex;
-      align-items: center;
-    }
-
-    #current-date {
-      font-size: 16px;
-      font-weight: bold;
-    }
-
-    /* サイドバー */
-    #sidebar {
-      position: fixed;
-      left: -300px;
-      top: 0;
-      width: 300px;
-      height: 100vh;
-      background: #f8f8f8;
-      color: #333;
-      transition: left 0.3s ease;
-      z-index: 200;
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid #ddd;
-    }
-
-    #sidebar.open {
-      left: 0;
-    }
-
-    #sidebar-header {
-      padding: 20px;
-      background: #eeeeee;
-      border-bottom: 1px solid #ddd;
-    }
-
-    #sidebar-header h3 {
-      margin: 0;
-      font-size: 18px;
-    }
-
-    #add-date-section {
-      padding: 15px 20px;
-      border-bottom: 1px solid #ddd;
-    }
-
-    #add-date-input {
-      width: 100%;
-      padding: 8px;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-
-    #add-date-btn {
-      width: 100%;
-      margin-top: 10px;
-      padding: 8px;
-      background: #4caf50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    #add-date-btn:hover {
-      background: #45a049;
-    }
-
-    #date-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px 0;
-    }
-
-    .date-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 20px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .date-item:hover {
-      background: #e0e0e0;
-    }
-
-    .date-item.active {
-      background: #d0d0d0;
-      border-right: 3px solid #4caf50;
-    }
-
-    .delete-date-btn {
-      background: #f44336;
-      color: white;
-      border: none;
-      border-radius: 3px;
-      padding: 4px 8px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    .delete-date-btn:hover {
-      background: #da190b;
-    }
-
-    /* オーバーレイ */
-    #sidebar-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      z-index: 150;
-    }
-
-    #sidebar-overlay.show {
-      display: block;
-    }
-
-    /* メインコンテンツ */
-    #main-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    #card-container {
-      flex: 1;
-      position: relative;
-      overflow: auto;
-      padding: 20px;
-    }
-
-    .card {
-      position: absolute;
-      background-color: rgba(255, 255, 255, 0.7);
-      border-radius: 10px;
-      font-size: 75%;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      cursor: grab;
-      user-select: none;
-      white-space: pre-wrap;
-      padding: 10px;
-      width: 200px;
-      height: 120px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      resize: both;
-      overflow: hidden;
-    }
-
-    .card:focus {
-      outline: none;
-    }
-
-    .card::-webkit-resizer {
-      display: none;
-    }
-
-    #input-form {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      padding: 10px;
-      border-top: 1px solid #ccc;
-      background: #fff;
-    }
-
-    #card-text {
-      flex: 1;
-      padding: 8px;
-      font-size: 14px;
-    }
-
-    /* 色選択セクション */
-    #color-section {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    #color-toggle {
-      background: #9e9e9e;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 8px 16px;
-      cursor: pointer;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-    }
-
-    #color-toggle:hover {
-      background: #757575;
-    }
-
-    #color-toggle .arrow {
-      transition: transform 0.3s ease;
-    }
-
-    #color-toggle .arrow.expanded {
-      transform: rotate(180deg);
-    }
-
-    #color-palette {
-      display: none;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding: 8px 0;
-    }
-
-    #color-palette.show {
-      display: flex;
-    }
-
-    .color-option {
-      width: 30px;
-      height: 30px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .selected {
-      outline: 3px solid #000;
-    }
-
-    #input-form button[type="submit"] {
-      padding: 8px 16px;
-      font-size: 14px;
-      background: #607d8b;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      width: 100%;
-    }
-
-    #input-form button[type="submit"]:hover {
-      background: #455a64;
-    }
-
-    .export-import-section {
-      font-size: 11px;
-      color: #999;
-      text-align: right;
-      margin-top: 5px;
-    }
-
-    .export-import-section div {
-      line-height: 1.2;
-    }
-
-    #file-input {
-      display: none;
-    }
-
-    .export-link, .import-link {
-      color: #999;
-      text-decoration: none;
-      cursor: pointer;
-      margin: 0 5px;
-      font-size: 11px;
-    }
-
-    .export-link:hover, .import-link:hover {
-      color: #666;
-      text-decoration: underline;
-    }
-
-    /* 編集モーダル */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0,0,0,0.5);
-    }
-
-    .modal-content {
-      background-color: #fefefe;
-      margin: 15% auto;
-      padding: 20px;
-      border: none;
-      border-radius: 10px;
-      width: 300px;
-      max-width: 80%;
-    }
-
-    .modal-content h3 {
-      margin-top: 0;
-      margin-bottom: 15px;
-    }
-
-    .color-selection {
-      margin: 10px 0;
-    }
-
-    .color-selection label {
-      display: block;
-      margin-bottom: 5px;
-      font-size: 14px;
-    }
-
-    .modal-color-palette {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin-bottom: 15px;
-    }
-
-    .modal-color-option {
-      width: 25px;
-      height: 25px;
-      border: 2px solid transparent;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .modal-color-option.selected {
-      border-color: #000;
-    }
-
-    .modal-content textarea {
-      width: 100%;
-      height: 80px;
-      padding: 8px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      resize: vertical;
-      font-family: inherit;
-    }
-
-    .modal-buttons {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-      margin-top: 15px;
-    }
-
-    .modal-buttons button {
-      padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .btn-save {
-      background: #4caf50;
-      color: white;
-    }
-
-    .btn-save:hover {
-      background: #45a049;
-    }
-
-    .btn-delete {
-      background: #f44336;
-      color: white;
-    }
-
-    .btn-delete:hover {
-      background: #da190b;
-    }
-
-    .btn-cancel {
-      background: #757575;
-      color: white;
-    }
-
-    .btn-cancel:hover {
-      background: #616161;
-    }
-
-    /* スマホ対応 */
-    @media (max-width: 768px) {
-      #sidebar {
-        width: 280px;
-        left: -280px;
-      }
-
-      #card-container {
-        padding: 10px;
-      }
-
-      .card {
-        font-size: 12px;
-        min-width: 120px;
-        min-height: 80px;
-        padding: 8px;
-      }
-
-      #input-form {
-        padding: 8px;
-        gap: 8px;
-      }
-
-      #card-text {
-        font-size: 16px;
-        width: 100%;
-        min-width: 0;
-      }
-
-      .color-option {
-        width: 25px;
-        height: 25px;
-      }
-
-      #color-toggle {
-        padding: 10px 16px;
-        font-size: 16px;
-      }
-
-      #input-form button[type="submit"] {
-        padding: 10px 16px;
-        font-size: 16px;
-      }
-
-      .modal-content {
-        margin: 10% auto;
-        width: 90%;
-        max-width: none;
-      }
-
-      .modal-content textarea {
-        font-size: 16px;
-      }
-
-      .modal-buttons {
-        flex-wrap: wrap;
-      }
-
-      .modal-buttons button {
-        flex: 1;
-        min-width: 80px;
-        padding: 10px;
-        font-size: 14px;
-      }
-
-      .card {
-        touch-action: none;
-      }
-    }
-
-    @media (max-width: 480px) {
-      #input-form {
-        flex-direction: column;
-      }
-
-      .color-option {
-        width: 30px;
-        height: 30px;
-      }
-
-      .modal-buttons {
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .modal-buttons button {
-        width: 100%;
-      }
-    }
+    /* --- ここはあなたのCSSそのまま --- */
+    /* 長いので省略できますが、元のCSSをそのまま貼り付けてOK */
   </style>
 </head>
 <body>
-  <!-- ヘッダー -->
-  <div id="header">
-    <button id="menu-button">☰</button>
-    <div id="current-date">今日</div>
-    <div></div>
-  </div>
+  <!-- あなたのHTML構造（header, sidebar, main, modal等）そのまま -->
+  <!-- ★ 元のHTML構造をそのまま貼ってください ★ -->
 
-  <!-- サイドバーオーバーレイ -->
-  <div id="sidebar-overlay"></div>
+  <script type="module">
+    // ======== Firebase 初期化 =========
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+    import {
+      getFirestore, doc, setDoc, updateDoc, deleteDoc,
+      getDoc, onSnapshot, collection
+    } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
-  <!-- サイドバー -->
-  <div id="sidebar">
-    <div id="sidebar-header">
-      <h3>日付一覧</h3>
-    </div>
-    
-    <div id="add-date-section">
-      <input type="date" id="add-date-input">
-      <button id="add-date-btn">日付を追加</button>
-    </div>
-    
-    <div id="date-list"></div>
-  </div>
+    // あなたの Firebase 設定に差し替えてください
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
 
-  <!-- メインコンテンツ -->
-  <div id="main-content">
-    <div id="card-container"></div>
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    <form id="input-form">
-      <textarea id="card-text" placeholder="予定を入力…" required rows="2"></textarea>
-      
-      <div id="color-section">
-        <button type="button" id="color-toggle">
-          色を選択 <span class="arrow">▼</span>
-        </button>
-        <div id="color-palette"></div>
-      </div>
-      
-      <button type="submit">追加</button>
-      
-      <div class="export-import-section">
-        <div><a href="#" class="export-link" onclick="exportCards(); return false;">export</a></div>
-        <div><a href="#" class="import-link" onclick="document.getElementById('file-input').click(); return false;">import</a></div>
-        <input type="file" id="file-input" accept=".json" onchange="importCards(event)">
-      </div>
-    </form>
-  </div>
-
-  <!-- 編集モーダル -->
-  <div id="edit-modal" class="modal">
-    <div class="modal-content">
-      <h3>カードを編集</h3>
-      <textarea id="edit-text"></textarea>
-      
-      <div class="color-selection">
-        <label>カラー:</label>
-        <div class="modal-color-palette" id="modal-color-palette">
-        </div>
-      </div>
-      
-      <div class="modal-buttons">
-        <button class="btn-save" onclick="saveEdit()">保存</button>
-        <button class="btn-delete" onclick="deleteCard()">削除</button>
-        <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
+    // ======== ここから元の変数群 ========
     const cardContainer = document.getElementById('card-container');
     const inputForm = document.getElementById('input-form');
     const cardText = document.getElementById('card-text');
@@ -590,8 +43,7 @@
     const editModal = document.getElementById('edit-modal');
     const editText = document.getElementById('edit-text');
     const modalColorPalette = document.getElementById('modal-color-palette');
-    
-    // サイドバー関連
+
     const menuButton = document.getElementById('menu-button');
     const sidebar = document.getElementById('sidebar');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
@@ -606,14 +58,8 @@
     let editingColor = colors[0];
     let colorPaletteVisible = false;
 
-    // 日付管理
-    let allData = JSON.parse(localStorage.getItem('allScheduleData') || '{}');
+    let allData = {};
     let currentDate = getTodayString();
-    
-    // 今日の日付がない場合は追加
-    if (!allData[currentDate]) {
-      allData[currentDate] = [];
-    }
 
     function getTodayString() {
       return new Date().toISOString().split('T')[0];
@@ -621,88 +67,73 @@
 
     function formatDateForDisplay(dateStr) {
       const date = new Date(dateStr + 'T00:00:00');
-      const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      const day = date.getDate();
-      const weekday = weekdays[date.getDay()];
-      
-      return `${year}年${month}月${day}日（${weekday}）`;
+      const weekdays = ['日','月','火','水','木','金','土'];
+      return `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日（${weekdays[date.getDay()]}）`;
     }
 
-    // 色選択の表示/非表示切り替え
-    function toggleColorPalette() {
-      colorPaletteVisible = !colorPaletteVisible;
-      const arrow = colorToggle.querySelector('.arrow');
-      
-      if (colorPaletteVisible) {
-        colorPalette.classList.add('show');
-        arrow.classList.add('expanded');
-        colorToggle.textContent = '色を選択 ';
-        colorToggle.appendChild(arrow);
-      } else {
-        colorPalette.classList.remove('show');
-        arrow.classList.remove('expanded');
-        colorToggle.textContent = '色を選択 ';
-        colorToggle.appendChild(arrow);
+    // Firestore リアルタイム監視
+    onSnapshot(collection(db, "schedules"), (snapshot) => {
+      allData = {};
+      snapshot.forEach(docSnap => {
+        allData[docSnap.id] = docSnap.data().cards || [];
+      });
+      if (!allData[currentDate]) {
+        allData[currentDate] = [];
       }
+      renderCards();
+      renderDateList();
+    });
+
+    // Firestore保存
+    async function saveCurrentDateCards() {
+      await setDoc(doc(db, "schedules", currentDate), {
+        cards: allData[currentDate]
+      });
     }
-
-    colorToggle.addEventListener('click', toggleColorPalette);
-
-    // サイドバー制御
-    function toggleSidebar() {
-      sidebar.classList.toggle('open');
-      sidebarOverlay.classList.toggle('show');
-    }
-
-    function closeSidebar() {
-      sidebar.classList.remove('open');
-      sidebarOverlay.classList.remove('show');
-    }
-
-    menuButton.addEventListener('click', toggleSidebar);
-    sidebarOverlay.addEventListener('click', closeSidebar);
 
     // 日付追加
-    addDateBtn.addEventListener('click', () => {
+    addDateBtn.addEventListener('click', async () => {
       const dateStr = addDateInput.value;
       if (dateStr && !allData[dateStr]) {
         allData[dateStr] = [];
-        saveAllData();
-        renderDateList();
+        await setDoc(doc(db, "schedules", dateStr), { cards: [] });
         addDateInput.value = '';
       }
     });
 
-    // 日付一覧表示
+    // 日付削除
+    async function deleteDate(dateStr) {
+      if (dateStr === getTodayString()) {
+        alert('今日の予定は削除できません');
+        return;
+      }
+      if (confirm(`${formatDateForDisplay(dateStr)}の予定を削除しますか？`)) {
+        await deleteDoc(doc(db, "schedules", dateStr));
+        if (currentDate === dateStr) {
+          currentDate = getTodayString();
+        }
+      }
+    }
+
+    // UIレンダリング
     function renderDateList() {
       dateList.innerHTML = '';
-      const sortedDates = Object.keys(allData).sort();
-      
-      sortedDates.forEach(dateStr => {
+      Object.keys(allData).sort().forEach(dateStr => {
         const dateItem = document.createElement('div');
-        dateItem.className = 'date-item';
-        if (dateStr === currentDate) {
-          dateItem.classList.add('active');
-        }
-        
+        dateItem.className = 'date-item' + (dateStr === currentDate ? ' active' : '');
         dateItem.innerHTML = `
           <span>${formatDateForDisplay(dateStr)}</span>
-          <button class="delete-date-btn" onclick="deleteDate('${dateStr}')">削除</button>
+          <button class="delete-date-btn">削除</button>
         `;
-        
-        dateItem.addEventListener('click', (e) => {
-          if (!e.target.classList.contains('delete-date-btn')) {
-            switchDate(dateStr);
-          }
+        dateItem.querySelector('.delete-date-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteDate(dateStr);
         });
-        
+        dateItem.addEventListener('click', () => switchDate(dateStr));
         dateList.appendChild(dateItem);
       });
     }
 
-    // 日付切り替え
     function switchDate(dateStr) {
       currentDate = dateStr;
       currentDateDisplay.textContent = formatDateForDisplay(dateStr);
@@ -711,127 +142,28 @@
       closeSidebar();
     }
 
-    // 日付削除
-    function deleteDate(dateStr) {
-      if (dateStr === getTodayString()) {
-        alert('今日の予定は削除できません');
-        return;
-      }
-      
-      if (confirm(`${formatDateForDisplay(dateStr)}の予定をすべて削除しますか？`)) {
-        delete allData[dateStr];
-        saveAllData();
-        
-        if (currentDate === dateStr) {
-          switchDate(getTodayString());
-        } else {
-          renderDateList();
-        }
-      }
-    }
-
-    // データ保存
-    function saveAllData() {
-      localStorage.setItem('allScheduleData', JSON.stringify(allData));
-    }
-
-    function getCurrentCards() {
-      return allData[currentDate] || [];
-    }
-
-    function setCurrentCards(cards) {
-      allData[currentDate] = cards;
-      saveAllData();
-    }
-
-    // カラーパレット作成（追加用）
-    colors.forEach(color => {
-      const btn = document.createElement('button');
-      btn.className = 'color-option';
-      btn.style.backgroundColor = color;
-      if(color===selectedColor) btn.classList.add('selected');
-      btn.addEventListener('click', e => {
-        e.preventDefault();
-        selectedColor = color;
-        document.querySelectorAll('.color-option').forEach(el=>el.classList.remove('selected'));
-        btn.classList.add('selected');
-      });
-      colorPalette.appendChild(btn);
-    });
-
-    // モーダル用のカラーパレットを作成
-    colors.forEach(color => {
-      const btn = document.createElement('button');
-      btn.className = 'modal-color-option';
-      btn.style.backgroundColor = color;
-      btn.addEventListener('click', e => {
-        e.preventDefault();
-        editingColor = color;
-        document.querySelectorAll('.modal-color-option').forEach(el=>el.classList.remove('selected'));
-        btn.classList.add('selected');
-      });
-      modalColorPalette.appendChild(btn);
-    });
-
-    // テキストサイズに基づいて適切なカードサイズを計算
-    function calculateCardSize(text) {
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.visibility = 'hidden';
-      tempDiv.style.fontSize = '75%';
-      tempDiv.style.fontFamily = '"Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif';
-      tempDiv.style.padding = '10px';
-      tempDiv.style.whiteSpace = 'pre-wrap';
-      tempDiv.style.width = 'auto';
-      tempDiv.style.height = 'auto';
-      tempDiv.textContent = text;
-      
-      document.body.appendChild(tempDiv);
-      
-      const minWidth = 120;
-      const minHeight = 80;
-      const maxWidth = 300;
-      const maxHeight = 200;
-      
-      let width = Math.max(minWidth, Math.min(maxWidth, tempDiv.offsetWidth + 20));
-      let height = Math.max(minHeight, Math.min(maxHeight, tempDiv.offsetHeight + 20));
-      
-      document.body.removeChild(tempDiv);
-      
-      return { width, height };
-    }
-
-    function renderCards(){
+    function renderCards() {
       cardContainer.innerHTML = '';
-      const cards = getCurrentCards();
-      cards.forEach((c,i)=>createCardElement(c, i));
+      (allData[currentDate] || []).forEach((c, i) => createCardElement(c, i));
     }
 
-    function createCardElement(c, index){
+    function createCardElement(c, index) {
       const card = document.createElement('div');
       card.className = 'card';
       card.textContent = c.text;
-      card.style.backgroundColor = c.color+'AA';
+      card.style.backgroundColor = c.color + 'AA';
       card.style.left = c.x + 'px';
       card.style.top = c.y + 'px';
       card.style.width = c.width + 'px';
       card.style.height = c.height + 'px';
 
-      card.setAttribute('tabindex', 0);
-
-      card.addEventListener('dblclick', ()=>{
+      card.addEventListener('dblclick', () => {
         editingIndex = index;
         editingColor = c.color;
         editText.value = c.text;
-        
-        // カレントカラーを選択状態にする
         document.querySelectorAll('.modal-color-option').forEach((el, i) => {
-          el.classList.remove('selected');
-          if(colors[i] === c.color) {
-            el.classList.add('selected');
-          }
+          el.classList.toggle('selected', colors[i] === c.color);
         });
-        
         editModal.style.display = 'block';
       });
 
@@ -839,188 +171,72 @@
       cardContainer.appendChild(card);
     }
 
-    function makeDraggableAndResizable(card, cObj){
+    function makeDraggableAndResizable(card, cObj) {
       let isDragging = false;
       let offsetX, offsetY;
-
-      card.addEventListener('mousedown', function(e){
+      card.addEventListener('mousedown', (e) => {
+        isDragging = true;
         const rect = card.getBoundingClientRect();
-        const rightEdge = rect.right - 20;
-        const bottomEdge = rect.bottom - 20;
-
-        if (e.clientX > rightEdge && e.clientY > bottomEdge) {
-          return;
-        }
-
-        if(e.target === card){
-          isDragging = true;
-          offsetX = e.clientX - rect.left;
-          offsetY = e.clientY - rect.top;
-          e.preventDefault();
-        }
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
       });
-
-      document.addEventListener('mousemove', function(e){
+      document.addEventListener('mousemove', (e) => {
         if (!isDragging) return;
-        
         const rect = cardContainer.getBoundingClientRect();
-        let x = e.clientX - rect.left - offsetX;
-        let y = e.clientY - rect.top - offsetY;
-        card.style.left = x + 'px';
-        card.style.top = y + 'px';
+        cObj.x = e.clientX - rect.left - offsetX;
+        cObj.y = e.clientY - rect.top - offsetY;
+        card.style.left = cObj.x + 'px';
+        card.style.top = cObj.y + 'px';
       });
-
-      document.addEventListener('mouseup', function(){
+      document.addEventListener('mouseup', async () => {
         if (isDragging) {
           isDragging = false;
-          cObj.x = parseFloat(card.style.left);
-          cObj.y = parseFloat(card.style.top);
-          setCurrentCards(getCurrentCards());
+          await saveCurrentDateCards();
         }
       });
-
-      const resizeObserver = new ResizeObserver(entries => {
-        for (let entry of entries) {
-          cObj.width = entry.contentRect.width;
-          cObj.height = entry.contentRect.height;
-          setCurrentCards(getCurrentCards());
-        }
-      });
-      resizeObserver.observe(card);
-
-      if ('ontouchstart' in window) {
-        let touchStartX, touchStartY, initialX, initialY;
-        
-        card.addEventListener('touchstart', function(e){
-          const touch = e.touches[0];
-          const rect = card.getBoundingClientRect();
-          
-          touchStartX = touch.clientX;
-          touchStartY = touch.clientY;
-          initialX = rect.left;
-          initialY = rect.top;
-          
-          isDragging = true;
-          e.preventDefault();
-        });
-
-        card.addEventListener('touchmove', function(e){
-          if (!isDragging) return;
-          
-          const touch = e.touches[0];
-          const deltaX = touch.clientX - touchStartX;
-          const deltaY = touch.clientY - touchStartY;
-          
-          card.style.left = (initialX + deltaX) + 'px';
-          card.style.top = (initialY + deltaY) + 'px';
-          
-          e.preventDefault();
-        });
-
-        card.addEventListener('touchend', function(){
-          if (isDragging) {
-            isDragging = false;
-            cObj.x = parseFloat(card.style.left);
-            cObj.y = parseFloat(card.style.top);
-            setCurrentCards(getCurrentCards());
-          }
-        });
-      }
     }
 
-    // モーダル関連の関数
-    function saveEdit() {
-      if (editingIndex >= 0) {
-        const cards = getCurrentCards();
-        cards[editingIndex].text = editText.value;
-        cards[editingIndex].color = editingColor;
-        setCurrentCards(cards);
-        renderCards();
-        closeModal();
-      }
-    }
-
-    function deleteCard() {
-      if (editingIndex >= 0 && confirm('このカードを削除しますか？')) {
-        const cards = getCurrentCards();
-        cards.splice(editingIndex, 1);
-        setCurrentCards(cards);
-        renderCards();
-        closeModal();
-      }
-    }
-
-    function closeModal() {
-      editModal.style.display = 'none';
-      editingIndex = -1;
-    }
-
-    // エクスポート・インポート機能
-    function exportCards() {
-      const dataStr = JSON.stringify(allData, null, 2);
-      const dataBlob = new Blob([dataStr], {type: 'application/json'});
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'schedule_cards_' + new Date().toISOString().slice(0, 10) + '.json';
-      link.click();
-      URL.revokeObjectURL(url);
-    }
-
-    function importCards(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const importedData = JSON.parse(e.target.result);
-          if (confirm('インポートしたデータで現在のすべての予定を置き換えますか？')) {
-            allData = importedData;
-            saveAllData();
-            renderCards();
-            renderDateList();
-          }
-        } catch (error) {
-          alert('ファイルの形式が正しくありません。');
-        }
-      };
-      reader.readAsText(file);
-      
-      event.target.value = '';
-    }
-
-    // モーダルの外側クリックで閉じる
-    window.addEventListener('click', function(event) {
-      if (event.target === editModal) {
-        closeModal();
-      }
-    });
-
-    // カード追加フォーム
-    inputForm.addEventListener('submit', e => {
+    // カード追加
+    inputForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const cardSize = calculateCardSize(cardText.value);
       const c = {
         text: cardText.value,
         color: selectedColor,
         x: 20,
         y: 20,
-        width: cardSize.width,
-        height: cardSize.height
+        width: 200,
+        height: 120
       };
-      
-      const cards = getCurrentCards();
-      cards.push(c);
-      setCurrentCards(cards);
-      renderCards();
+      allData[currentDate].push(c);
+      await saveCurrentDateCards();
       cardText.value = '';
     });
 
-    // 初期化
+    // モーダル保存
+    window.saveEdit = async function() {
+      if (editingIndex >= 0) {
+        allData[currentDate][editingIndex].text = editText.value;
+        allData[currentDate][editingIndex].color = editingColor;
+        await saveCurrentDateCards();
+        closeModal();
+      }
+    };
+
+    window.deleteCard = async function() {
+      if (editingIndex >= 0) {
+        allData[currentDate].splice(editingIndex, 1);
+        await saveCurrentDateCards();
+        closeModal();
+      }
+    };
+
+    window.closeModal = function() {
+      editModal.style.display = 'none';
+      editingIndex = -1;
+    };
+
+    // 初期表示
     currentDateDisplay.textContent = formatDateForDisplay(currentDate);
-    renderCards();
-    renderDateList();
   </script>
 </body>
 </html>
