@@ -16,6 +16,152 @@
       overflow: hidden;
     }
 
+    /* ヘッダー */
+    #header {
+      background: #607d8b;
+      color: white;
+      padding: 10px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+    }
+
+    #menu-button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 5px;
+      display: flex;
+      align-items: center;
+    }
+
+    #current-date {
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    /* サイドバー */
+    #sidebar {
+      position: fixed;
+      left: -300px;
+      top: 0;
+      width: 300px;
+      height: 100vh;
+      background: #455a64;
+      color: white;
+      transition: left 0.3s ease;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #sidebar.open {
+      left: 0;
+    }
+
+    #sidebar-header {
+      padding: 20px;
+      background: #37474f;
+      border-bottom: 1px solid #546e7a;
+    }
+
+    #sidebar-header h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    #add-date-section {
+      padding: 15px 20px;
+      border-bottom: 1px solid #546e7a;
+    }
+
+    #add-date-input {
+      width: 100%;
+      padding: 8px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    #add-date-btn {
+      width: 100%;
+      margin-top: 10px;
+      padding: 8px;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #add-date-btn:hover {
+      background: #45a049;
+    }
+
+    #date-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 0;
+    }
+
+    .date-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .date-item:hover {
+      background: #546e7a;
+    }
+
+    .date-item.active {
+      background: #607d8b;
+      border-right: 3px solid #4caf50;
+    }
+
+    .delete-date-btn {
+      background: #f44336;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .delete-date-btn:hover {
+      background: #da190b;
+    }
+
+    /* オーバーレイ */
+    #sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      z-index: 150;
+    }
+
+    #sidebar-overlay.show {
+      display: block;
+    }
+
+    /* メインコンテンツ */
+    #main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
     #card-container {
       flex: 1;
       position: relative;
@@ -46,7 +192,6 @@
       outline: none;
     }
 
-    /* リサイズハンドルの斜線を非表示 */
     .card::-webkit-resizer {
       display: none;
     }
@@ -230,8 +375,9 @@
 
     /* スマホ対応 */
     @media (max-width: 768px) {
-      body {
-        font-size: 14px;
+      #sidebar {
+        width: 280px;
+        left: -280px;
       }
 
       #card-container {
@@ -251,7 +397,7 @@
       }
 
       #card-text {
-        font-size: 16px; /* iOS のズーム防止 */
+        font-size: 16px;
         width: 100%;
         min-width: 0;
       }
@@ -274,7 +420,7 @@
       }
 
       .modal-content textarea {
-        font-size: 16px; /* iOS のズーム防止 */
+        font-size: 16px;
       }
 
       .modal-buttons {
@@ -288,7 +434,6 @@
         font-size: 14px;
       }
 
-      /* タッチデバイス対応 */
       .card {
         touch-action: none;
       }
@@ -316,20 +461,46 @@
   </style>
 </head>
 <body>
+  <!-- ヘッダー -->
+  <div id="header">
+    <button id="menu-button">☰</button>
+    <div id="current-date">今日</div>
+    <div></div>
+  </div>
 
-  <div id="card-container"></div>
+  <!-- サイドバーオーバーレイ -->
+  <div id="sidebar-overlay"></div>
 
-  <form id="input-form">
-    <textarea id="card-text" placeholder="予定を入力…" required rows="2"></textarea>
-    <div id="color-palette"></div>
-    <button type="submit">追加</button>
-    
-    <div class="export-import-section">
-      <div><a href="#" class="export-link" onclick="exportCards(); return false;">export</a></div>
-      <div><a href="#" class="import-link" onclick="document.getElementById('file-input').click(); return false;">import</a></div>
-      <input type="file" id="file-input" accept=".json" onchange="importCards(event)">
+  <!-- サイドバー -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <h3>日付一覧</h3>
     </div>
-  </form>
+    
+    <div id="add-date-section">
+      <input type="date" id="add-date-input">
+      <button id="add-date-btn">日付を追加</button>
+    </div>
+    
+    <div id="date-list"></div>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <div id="main-content">
+    <div id="card-container"></div>
+
+    <form id="input-form">
+      <textarea id="card-text" placeholder="予定を入力…" required rows="2"></textarea>
+      <div id="color-palette"></div>
+      <button type="submit">追加</button>
+      
+      <div class="export-import-section">
+        <div><a href="#" class="export-link" onclick="exportCards(); return false;">export</a></div>
+        <div><a href="#" class="import-link" onclick="document.getElementById('file-input').click(); return false;">import</a></div>
+        <input type="file" id="file-input" accept=".json" onchange="importCards(event)">
+      </div>
+    </form>
+  </div>
 
   <!-- 編集モーダル -->
   <div id="edit-modal" class="modal">
@@ -359,11 +530,148 @@
     const editModal = document.getElementById('edit-modal');
     const editText = document.getElementById('edit-text');
     const modalColorPalette = document.getElementById('modal-color-palette');
+    
+    // サイドバー関連
+    const menuButton = document.getElementById('menu-button');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const currentDateDisplay = document.getElementById('current-date');
+    const addDateInput = document.getElementById('add-date-input');
+    const addDateBtn = document.getElementById('add-date-btn');
+    const dateList = document.getElementById('date-list');
 
     const colors = ['#ff8a80','#ffcc80','#fff59d','#c8e6c9','#80deea','#b39ddb','#f48fb1','#a1887f','#90a4ae','#e0e0e0'];
     let selectedColor = colors[0];
     let editingIndex = -1;
     let editingColor = colors[0];
+
+    // 日付管理
+    let allData = JSON.parse(localStorage.getItem('allScheduleData') || '{}');
+    let currentDate = getTodayString();
+    
+    // 今日の日付がない場合は追加
+    if (!allData[currentDate]) {
+      allData[currentDate] = [];
+    }
+
+    function getTodayString() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    function formatDateForDisplay(dateStr) {
+      const date = new Date(dateStr + 'T00:00:00');
+      const today = new Date();
+      const targetDate = new Date(date);
+      
+      if (dateStr === getTodayString()) {
+        return '今日';
+      }
+      
+      const diffTime = targetDate - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 1) {
+        return '明日';
+      } else if (diffDays === -1) {
+        return '昨日';
+      }
+      
+      return `${date.getMonth() + 1}/${date.getDate()}`;
+    }
+
+    // サイドバー制御
+    function toggleSidebar() {
+      sidebar.classList.toggle('open');
+      sidebarOverlay.classList.toggle('show');
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('show');
+    }
+
+    menuButton.addEventListener('click', toggleSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+
+    // 日付追加
+    addDateBtn.addEventListener('click', () => {
+      const dateStr = addDateInput.value;
+      if (dateStr && !allData[dateStr]) {
+        allData[dateStr] = [];
+        saveAllData();
+        renderDateList();
+        addDateInput.value = '';
+      }
+    });
+
+    // 日付一覧表示
+    function renderDateList() {
+      dateList.innerHTML = '';
+      const sortedDates = Object.keys(allData).sort();
+      
+      sortedDates.forEach(dateStr => {
+        const dateItem = document.createElement('div');
+        dateItem.className = 'date-item';
+        if (dateStr === currentDate) {
+          dateItem.classList.add('active');
+        }
+        
+        dateItem.innerHTML = `
+          <span>${formatDateForDisplay(dateStr)}</span>
+          <button class="delete-date-btn" onclick="deleteDate('${dateStr}')">削除</button>
+        `;
+        
+        dateItem.addEventListener('click', (e) => {
+          if (!e.target.classList.contains('delete-date-btn')) {
+            switchDate(dateStr);
+          }
+        });
+        
+        dateList.appendChild(dateItem);
+      });
+    }
+
+    // 日付切り替え
+    function switchDate(dateStr) {
+      currentDate = dateStr;
+      currentDateDisplay.textContent = formatDateForDisplay(dateStr);
+      renderCards();
+      renderDateList();
+      closeSidebar();
+    }
+
+    // 日付削除
+    function deleteDate(dateStr) {
+      if (dateStr === getTodayString()) {
+        alert('今日の予定は削除できません');
+        return;
+      }
+      
+      if (confirm(`${formatDateForDisplay(dateStr)}の予定をすべて削除しますか？`)) {
+        delete allData[dateStr];
+        saveAllData();
+        
+        if (currentDate === dateStr) {
+          switchDate(getTodayString());
+        } else {
+          renderDateList();
+        }
+      }
+    }
+
+    // データ保存
+    function saveAllData() {
+      localStorage.setItem('allScheduleData', JSON.stringify(allData));
+    }
+
+    function getCurrentCards() {
+      return allData[currentDate] || [];
+    }
+
+    function setCurrentCards(cards) {
+      allData[currentDate] = cards;
+      saveAllData();
+    }
 
     // カラーパレット作成（追加用）
     colors.forEach(color => {
@@ -393,12 +701,6 @@
       });
       modalColorPalette.appendChild(btn);
     });
-
-    let cards = JSON.parse(localStorage.getItem('cards')||'[]');
-    
-    function save() {
-      localStorage.setItem('cards', JSON.stringify(cards));
-    }
 
     // テキストサイズに基づいて適切なカードサイズを計算
     function calculateCardSize(text) {
@@ -430,6 +732,7 @@
 
     function renderCards(){
       cardContainer.innerHTML = '';
+      const cards = getCurrentCards();
       cards.forEach((c,i)=>createCardElement(c, i));
     }
 
@@ -470,17 +773,14 @@
       let offsetX, offsetY;
 
       card.addEventListener('mousedown', function(e){
-        // リサイズハンドル領域かどうかをチェック
         const rect = card.getBoundingClientRect();
         const rightEdge = rect.right - 20;
         const bottomEdge = rect.bottom - 20;
 
-        // 右下角付近でのクリック（リサイズ）を検出 - ブラウザのネイティブリサイズに任せる
         if (e.clientX > rightEdge && e.clientY > bottomEdge) {
-          return; // ブラウザのリサイズ機能に任せる
+          return;
         }
 
-        // それ以外はドラッグ
         if(e.target === card){
           isDragging = true;
           offsetX = e.clientX - rect.left;
@@ -504,21 +804,19 @@
           isDragging = false;
           cObj.x = parseFloat(card.style.left);
           cObj.y = parseFloat(card.style.top);
-          save();
+          setCurrentCards(getCurrentCards());
         }
       });
 
-      // サイズ変更検出（ブラウザのリサイズ後）
       const resizeObserver = new ResizeObserver(entries => {
         for (let entry of entries) {
           cObj.width = entry.contentRect.width;
           cObj.height = entry.contentRect.height;
-          save();
+          setCurrentCards(getCurrentCards());
         }
       });
       resizeObserver.observe(card);
 
-      // タッチデバイス対応
       if ('ontouchstart' in window) {
         let touchStartX, touchStartY, initialX, initialY;
         
@@ -553,7 +851,7 @@
             isDragging = false;
             cObj.x = parseFloat(card.style.left);
             cObj.y = parseFloat(card.style.top);
-            save();
+            setCurrentCards(getCurrentCards());
           }
         });
       }
@@ -562,9 +860,10 @@
     // モーダル関連の関数
     function saveEdit() {
       if (editingIndex >= 0) {
+        const cards = getCurrentCards();
         cards[editingIndex].text = editText.value;
         cards[editingIndex].color = editingColor;
-        save();
+        setCurrentCards(cards);
         renderCards();
         closeModal();
       }
@@ -572,8 +871,9 @@
 
     function deleteCard() {
       if (editingIndex >= 0 && confirm('このカードを削除しますか？')) {
+        const cards = getCurrentCards();
         cards.splice(editingIndex, 1);
-        save();
+        setCurrentCards(cards);
         renderCards();
         closeModal();
       }
@@ -586,12 +886,12 @@
 
     // エクスポート・インポート機能
     function exportCards() {
-      const dataStr = JSON.stringify(cards, null, 2);
+      const dataStr = JSON.stringify(allData, null, 2);
       const dataBlob = new Blob([dataStr], {type: 'application/json'});
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'cards_' + new Date().toISOString().slice(0, 10) + '.json';
+      link.download = 'schedule_cards_' + new Date().toISOString().slice(0, 10) + '.json';
       link.click();
       URL.revokeObjectURL(url);
     }
@@ -603,11 +903,12 @@
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
-          const importedCards = JSON.parse(e.target.result);
-          if (confirm('インポートしたデータで現在のカードを置き換えますか？')) {
-            cards = importedCards;
-            save();
+          const importedData = JSON.parse(e.target.result);
+          if (confirm('インポートしたデータで現在のすべての予定を置き換えますか？')) {
+            allData = importedData;
+            saveAllData();
             renderCards();
+            renderDateList();
           }
         } catch (error) {
           alert('ファイルの形式が正しくありません。');
@@ -615,7 +916,6 @@
       };
       reader.readAsText(file);
       
-      // ファイル選択をリセット
       event.target.value = '';
     }
 
@@ -638,14 +938,18 @@
         width: cardSize.width,
         height: cardSize.height
       };
+      
+      const cards = getCurrentCards();
       cards.push(c);
-      save();
+      setCurrentCards(cards);
       renderCards();
       cardText.value = '';
     });
 
     // 初期化
+    currentDateDisplay.textContent = formatDateForDisplay(currentDate);
     renderCards();
+    renderDateList();
   </script>
 </body>
 </html>
