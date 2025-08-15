@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ふんわり予定カード</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #card-container {
+      flex: 1;
+      position: relative;
+      overflow: auto;
+      padding: 20px;
+    }
+
+    .card {
+      position: absolute;
+      background-color: rgba(255, 255, 255, 0.7);
+      border-radius: 10px;
+      font-size: 75%;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      cursor: grab;
+      user-select: none;
+      white-space: pre-wrap;
+      padding: 10px;
+      width: 200px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      resize: both;
+      overflow: hidden;
+    }
+
+    .card:focus {
+      outline: none;
+    }
+
+    /* リサイズハンドルの斜線を非表示 */
+    .card::-webkit-resizer {
+      display: none;
+    }
+
+    #input-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 10px;
+      border-top: 1px solid #ccc;
+      background: #fff;
+    }
+
+    #card-text {
+      flex: 1;
+      padding: 8px;
+      font-size: 14px;
+    }
+
+    .color-option {
+      width: 30px;
+      height: 30px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .selected {
+      outline: 3px solid #000;
+    }
+
+    #input-form button {
+      padding: 8px 16px;
+      font-size: 14px;
+      background: #607d8b;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    #input-form button:hover {
+      background: #455a64;
+    }
+
+    .export-import-section {
+      font-size: 11px;
+      color: #999;
+      text-align: right;
+      margin-top: 5px;
+    }
+
+    .export-import-section div {
+      line-height: 1.2;
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    .export-link, .import-link {
+      color: #999;
+      text-decoration: none;
+      cursor: pointer;
+      margin: 0 5px;
+      font-size: 11px;
+    }
+
+    .export-link:hover, .import-link:hover {
+      color: #666;
+      text-decoration: underline;
+    }
+
+    /* 編集モーダル */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: none;
+      border-radius: 10px;
+      width: 300px;
+      max-width: 80%;
+    }
+
+    .modal-content h3 {
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+
+    .color-selection {
+      margin: 10px 0;
+    }
+
+    .color-selection label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    .modal-color-palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 15px;
+    }
+
+    .modal-color-option {
+      width: 25px;
+      height: 25px;
+      border: 2px solid transparent;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .modal-color-option.selected {
+      border-color: #000;
+    }
+
+    .modal-content textarea {
+      width: 100%;
+      height: 80px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      resize: vertical;
+      font-family: inherit;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 15px;
+    }
+
+    .modal-buttons button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .btn-save {
+      background: #4caf50;
+      color: white;
+    }
+
+    .btn-save:hover {
+      background: #45a049;
+    }
+
+    .btn-delete {
+      background: #f44336;
+      color: white;
+    }
+
+    .btn-delete:hover {
+      background: #da190b;
+    }
+
+    .btn-cancel {
+      background: #757575;
+      color: white;
+    }
+
+    .btn-cancel:hover {
+      background: #616161;
+    }
+
+    /* スマホ対応 */
+    @media (max-width: 768px) {
+      body {
+        font-size: 14px;
+      }
+
+      #card-container {
+        padding: 10px;
+      }
+
+      .card {
+        font-size: 12px;
+        min-width: 120px;
+        min-height: 80px;
+        padding: 8px;
+      }
+
+      #input-form {
+        padding: 8px;
+        gap: 8px;
+      }
+
+      #card-text {
+        font-size: 16px; /* iOS のズーム防止 */
+        width: 100%;
+        min-width: 0;
+      }
+
+      .color-option {
+        width: 25px;
+        height: 25px;
+      }
+
+      #input-form button {
+        padding: 10px 16px;
+        font-size: 16px;
+        width: 100%;
+      }
+
+      .modal-content {
+        margin: 10% auto;
+        width: 90%;
+        max-width: none;
+      }
+
+      .modal-content textarea {
+        font-size: 16px; /* iOS のズーム防止 */
+      }
+
+      .modal-buttons {
+        flex-wrap: wrap;
+      }
+
+      .modal-buttons button {
+        flex: 1;
+        min-width: 80px;
+        padding: 10px;
+        font-size: 14px;
+      }
+
+      /* タッチデバイス対応 */
+      .card {
+        touch-action: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      #input-form {
+        flex-direction: column;
+      }
+
+      .color-option {
+        width: 30px;
+        height: 30px;
+      }
+
+      .modal-buttons {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .modal-buttons button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="card-container"></div>
+
+  <form id="input-form">
+    <textarea id="card-text" placeholder="予定を入力…" required rows="2"></textarea>
+    <div id="color-palette"></div>
+    <button type="submit">追加</button>
+    
+    <div class="export-import-section">
+      <div><a href="#" class="export-link" onclick="exportCards(); return false;">export</a></div>
+      <div><a href="#" class="import-link" onclick="document.getElementById('file-input').click(); return false;">import</a></div>
+      <input type="file" id="file-input" accept=".json" onchange="importCards(event)">
+    </div>
+  </form>
+
+  <!-- 編集モーダル -->
+  <div id="edit-modal" class="modal">
+    <div class="modal-content">
+      <h3>カードを編集</h3>
+      <textarea id="edit-text"></textarea>
+      
+      <div class="color-selection">
+        <label>カラー:</label>
+        <div class="modal-color-palette" id="modal-color-palette">
+        </div>
+      </div>
+      
+      <div class="modal-buttons">
+        <button class="btn-save" onclick="saveEdit()">保存</button>
+        <button class="btn-delete" onclick="deleteCard()">削除</button>
+        <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const cardContainer = document.getElementById('card-container');
+    const inputForm = document.getElementById('input-form');
+    const cardText = document.getElementById('card-text');
+    const colorPalette = document.getElementById('color-palette');
+    const editModal = document.getElementById('edit-modal');
+    const editText = document.getElementById('edit-text');
+    const modalColorPalette = document.getElementById('modal-color-palette');
+
+    const colors = ['#ff8a80','#ffcc80','#fff59d','#c8e6c9','#80deea','#b39ddb','#f48fb1','#a1887f','#90a4ae','#e0e0e0'];
+    let selectedColor = colors[0];
+    let editingIndex = -1;
+    let editingColor = colors[0];
+
+    // カラーパレット作成（追加用）
+    colors.forEach(color => {
+      const btn = document.createElement('button');
+      btn.className = 'color-option';
+      btn.style.backgroundColor = color;
+      if(color===selectedColor) btn.classList.add('selected');
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        selectedColor = color;
+        document.querySelectorAll('.color-option').forEach(el=>el.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+      colorPalette.appendChild(btn);
+    });
+
+    // モーダル用のカラーパレットを作成
+    colors.forEach(color => {
+      const btn = document.createElement('button');
+      btn.className = 'modal-color-option';
+      btn.style.backgroundColor = color;
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        editingColor = color;
+        document.querySelectorAll('.modal-color-option').forEach(el=>el.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+      modalColorPalette.appendChild(btn);
+    });
+
+    let cards = JSON.parse(localStorage.getItem('cards')||'[]');
+    
+    function save() {
+      localStorage.setItem('cards', JSON.stringify(cards));
+    }
+
+    // テキストサイズに基づいて適切なカードサイズを計算
+    function calculateCardSize(text) {
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.visibility = 'hidden';
+      tempDiv.style.fontSize = '75%';
+      tempDiv.style.fontFamily = '"Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif';
+      tempDiv.style.padding = '10px';
+      tempDiv.style.whiteSpace = 'pre-wrap';
+      tempDiv.style.width = 'auto';
+      tempDiv.style.height = 'auto';
+      tempDiv.textContent = text;
+      
+      document.body.appendChild(tempDiv);
+      
+      const minWidth = 120;
+      const minHeight = 80;
+      const maxWidth = 300;
+      const maxHeight = 200;
+      
+      let width = Math.max(minWidth, Math.min(maxWidth, tempDiv.offsetWidth + 20));
+      let height = Math.max(minHeight, Math.min(maxHeight, tempDiv.offsetHeight + 20));
+      
+      document.body.removeChild(tempDiv);
+      
+      return { width, height };
+    }
+
+    function renderCards(){
+      cardContainer.innerHTML = '';
+      cards.forEach((c,i)=>createCardElement(c, i));
+    }
+
+    function createCardElement(c, index){
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.textContent = c.text;
+      card.style.backgroundColor = c.color+'AA';
+      card.style.left = c.x + 'px';
+      card.style.top = c.y + 'px';
+      card.style.width = c.width + 'px';
+      card.style.height = c.height + 'px';
+
+      card.setAttribute('tabindex', 0);
+
+      card.addEventListener('dblclick', ()=>{
+        editingIndex = index;
+        editingColor = c.color;
+        editText.value = c.text;
+        
+        // カレントカラーを選択状態にする
+        document.querySelectorAll('.modal-color-option').forEach((el, i) => {
+          el.classList.remove('selected');
+          if(colors[i] === c.color) {
+            el.classList.add('selected');
+          }
+        });
+        
+        editModal.style.display = 'block';
+      });
+
+      makeDraggableAndResizable(card, c);
+      cardContainer.appendChild(card);
+    }
+
+    function makeDraggableAndResizable(card, cObj){
+      let isDragging = false;
+      let isResizing = false;
+      let offsetX, offsetY;
+
+      // タッチイベントとマウスイベントの両方に対応
+      const startEvent = 'ontouchstart' in window ? 'touchstart' : 'mousedown';
+      const moveEvent = 'ontouchstart' in window ? 'touchmove' : 'mousemove';
+      const endEvent = 'ontouchstart' in window ? 'touchend' : 'mouseup';
+
+      card.addEventListener(startEvent, function(e){
+        e.preventDefault();
+        const touch = e.touches ? e.touches[0] : e;
+        const rect = card.getBoundingClientRect();
+        const rightEdge = rect.right - 30;
+        const bottomEdge = rect.bottom - 30;
+
+        if (touch.clientX > rightEdge && touch.clientY > bottomEdge) {
+          isResizing = true;
+          return;
+        }
+
+        if(e.target === card){
+          isDragging = true;
+          offsetX = touch.clientX - rect.left;
+          offsetY = touch.clientY - rect.top;
+        }
+      });
+
+      document.addEventListener(moveEvent, function(e){
+        if (isResizing) {
+          return;
+        }
+        
+        if (!isDragging) return;
+        e.preventDefault();
+        const touch = e.touches ? e.touches[0] : e;
+        const rect = cardContainer.getBoundingClientRect();
+        let x = touch.clientX - rect.left - offsetX;
+        let y = touch.clientY - rect.top - offsetY;
+        card.style.left = x + 'px';
+        card.style.top = y + 'px';
+      }, { passive: false });
+
+      document.addEventListener(endEvent, function(){
+        if (isDragging) {
+          isDragging = false;
+          cObj.x = parseFloat(card.style.left);
+          cObj.y = parseFloat(card.style.top);
+          save();
+        }
+        if (isResizing) {
+          isResizing = false;
+          cObj.width = parseFloat(card.style.width);
+          cObj.height = parseFloat(card.style.height);
+          save();
+        }
+      });
+
+      // サイズ変更検出
+      const resizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+          cObj.width = entry.contentRect.width;
+          cObj.height = entry.contentRect.height;
+          save();
+        }
+      });
+      resizeObserver.observe(card);
+    }
+
+    // モーダル関連の関数
+    function saveEdit() {
+      if (editingIndex >= 0) {
+        cards[editingIndex].text = editText.value;
+        cards[editingIndex].color = editingColor;
+        save();
+        renderCards();
+        closeModal();
+      }
+    }
+
+    function deleteCard() {
+      if (editingIndex >= 0 && confirm('このカードを削除しますか？')) {
+        cards.splice(editingIndex, 1);
+        save();
+        renderCards();
+        closeModal();
+      }
+    }
+
+    function closeModal() {
+      editModal.style.display = 'none';
+      editingIndex = -1;
+    }
+
+    // エクスポート・インポート機能
+    function exportCards() {
+      const dataStr = JSON.stringify(cards, null, 2);
+      const dataBlob = new Blob([dataStr], {type: 'application/json'});
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'cards_' + new Date().toISOString().slice(0, 10) + '.json';
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importCards(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const importedCards = JSON.parse(e.target.result);
+          if (confirm('インポートしたデータで現在のカードを置き換えますか？')) {
+            cards = importedCards;
+            save();
+            renderCards();
+          }
+        } catch (error) {
+          alert('ファイルの形式が正しくありません。');
+        }
+      };
+      reader.readAsText(file);
+      
+      // ファイル選択をリセット
+      event.target.value = '';
+    }
+
+    // モーダルの外側クリックで閉じる
+    window.addEventListener('click', function(event) {
+      if (event.target === editModal) {
+        closeModal();
+      }
+    });
+
+    // カード追加フォーム
+    inputForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const cardSize = calculateCardSize(cardText.value);
+      const c = {
+        text: cardText.value,
+        color: selectedColor,
+        x: 20,
+        y: 20,
+        width: cardSize.width,
+        height: cardSize.height
+      };
+      cards.push(c);
+      save();
+      renderCards();
+      cardText.value = '';
+    });
+
+    // 初期化
+    renderCards();
+  </script>
+</body>
+</html>
